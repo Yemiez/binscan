@@ -117,8 +117,10 @@ struct _binscan {
 			char* preloadchunk;
 			size_t preloadchunk_size;
 		};
-		const char* buf;
-		size_t buf_size;
+		struct {
+			const char* buf;
+			size_t buf_size;
+		};
 	} content;
 
 	binscan_vec_t* signatures; 
@@ -148,8 +150,18 @@ void binscan_delete(binscan_t* b)
 		fclose(b->content.stream);
 	}
 
-	// TODO: free containing pointers in each binscan_sig_t*
+	// Delete contents in vectors
+	for (size_t i = 0; i < b->signatures->length; ++i) {
+		binscan_sig_t* sig = (binscan_sig_t*)binscan_vec_at(b->signatures, i);
+
+		if (sig->bytes) free(sig->bytes);
+		if (sig->mask) free(sig->mask);
+	}
+	
+	// Delete vecs
 	binscan_vec_delete(b->signatures);
+	binscan_vec_delete(b->matches);
+	free(b);
 }
 
 size_t binscan_getchunksize(binscan_t* b) { return b->chunksize; }
@@ -250,10 +262,9 @@ int binscan_parse(binscan_sig_t* sig)
 		++mask;
 		++bytes;
 	}
-	return 1;
-error:
+
 	free(pattern);
-	return 0;
+	return 1;
 }
 
 int binscan_register(binscan_t* b, int uid, const char* pattern)
@@ -432,6 +443,9 @@ int binscan_exec_fileptr(binscan_t* b)
 		}
 	}
 
+	free(b->content.prevchunk);
+	free(b->content.curchunk);
+	free(b->content.preloadchunk);
 	return matches;
 }
 
