@@ -1,0 +1,6 @@
+examples/
+*.a
+*.out
+*.txt
+*.exe
+
